@@ -1,128 +1,141 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { FileDown, FileText, Presentation } from "lucide-react"
-import MarkdownIt from "markdown-it"
+import type React from "react"
+import { useState, useEffect } from "react"
+import { Send, Sparkles, Download, FileSignature, BrainCircuit, X } from "lucide-react"
 import { APIService } from "@/services/api"
-import { MessageList } from "./ui/message-list"
-import { InputArea } from "./ui/input-area"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import type { Message } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { Header } from "./ui/header"
-import type { PARGenerationProps } from "@/lib/types" // Declare the variable here
+import { renderMarkdown } from "@/lib/markdown"
+import { MessageList } from "./ui/message-list"
 
 const apiService = new APIService()
-const md = new MarkdownIt({ html: true, linkify: true, breaks: true }).use(require("markdown-it-attrs"))
 
-export function PARGeneration({ onClose }: PARGenerationProps) {
+interface PARGenerationProps {
+  parId?: string
+  onClose: () => void
+}
+
+export function PARGeneration({ parId, onClose }: PARGenerationProps) {
   const [parContent, setParContent] = useState("")
-  const [messages, setMessages] = useState<Message[]>([])
-  const [isTyping, setIsTyping] = useState(true)
-  const [isUpdating, setIsUpdating] = useState(false)
-  const previewRef = useRef<HTMLDivElement>(null)
+  const [messages, setMessages] = useState<{ text: string; sender: "user" | "bot" }[]>([])
+  const [input, setInput] = useState("")
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [isFetchingState, setIsFetchingState] = useState(true)
+  const [glow, setGlow] = useState(false)
 
   useEffect(() => {
-    const initializePar = async () => {
-      setIsTyping(true)
-      const initialResponse = await apiService.generatePar()
-      if (initialResponse) {
-        setMessages([{ id: "init", text: initialResponse.chatResponse, sender: "bot" }])
-        setParContent(initialResponse.parUpdate)
+    const fetchAndUpdateParState = async () => {
+      if (parId) {
+        setIsFetchingState(true)
+        try {
+          const state = await apiService.getParState(parId)
+          setParContent(state.content)
+          setMessages(state.chatHistory)
+        } catch (error) {
+          console.error("Failed to fetch PAR state:", error)
+          setMessages([
+            { sender: "bot", text: "Apologies, I was unable to load the document state. You can start fresh." },
+          ])
+        } finally {
+          setIsFetchingState(false)
+        }
+      } else {
+        setIsFetchingState(false)
+        setMessages([{ sender: "bot", text: "Welcome to the PAR Co-Pilot. How can I help you build this document?" }])
       }
-      setIsTyping(false)
     }
-    initializePar()
-  }, [])
+    fetchAndUpdateParState()
+  }, [parId])
 
   useEffect(() => {
-    if (isUpdating) {
-      const timer = setTimeout(() => setIsUpdating(false), 1200)
+    if (parContent && !isFetchingState) {
+      setGlow(true)
+      const timer = setTimeout(() => setGlow(false), 1200)
       return () => clearTimeout(timer)
     }
-  }, [isUpdating])
+  }, [parContent, isFetchingState])
 
-  useEffect(() => {
-    if (previewRef.current) {
-      previewRef.current.scrollTop = previewRef.current.scrollHeight
-    }
-  }, [parContent])
+  const handleParChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isGenerating) return
 
-  const handleNewMessage = async (query: string) => {
-    const userMessage: Message = { id: Date.now().toString(), text: query, sender: "user" }
-    setMessages((prev) => [...prev, userMessage])
-    setIsTyping(true)
-    setIsUpdating(true)
+    const newUserMessage = { text: input, sender: "user" as const }
+    setMessages((prev) => [...prev, newUserMessage])
+    setInput("")
+    setIsGenerating(true)
 
-    const response = await apiService.queryParBuilder(query, parContent)
-
-    if (response) {
-      const botMessage: Message = { id: (Date.now() + 1).toString(), text: response.chatResponse, sender: "bot" }
-      setMessages((prev) => [...prev, botMessage])
-      setParContent((prev) => prev.replace(/\[.*?\]/, "") + response.parUpdate)
-    }
-    setIsTyping(false)
+    const response = await apiService.generateParSection(input, parContent)
+    setParContent(response.updatedPar)
+    setMessages((prev) => [...prev, { text: response.explanation, sender: "bot" }])
+    setIsGenerating(false)
   }
 
   return (
-    <div className="flex flex-col h-full bg-black/20 backdrop-blur-2xl rounded-2xl shadow-2xl shadow-black/30 border border-white/10">
-      <Header title="PAR Co-Pilot" showCloseButton onClose={onClose} />
-      <div className="flex-1 grid grid-cols-2 gap-4 p-4 pt-0 min-h-0">
-        {/* Chat Panel */}
-        <div className="flex flex-col bg-black/20 border border-white/10 rounded-xl shadow-lg">
+    <div className="flex flex-col h-full bg-black/30 backdrop-blur-2xl rounded-2xl shadow-2xl shadow-black/40 border border-white/10">
+      <header className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <FileSignature className="w-6 h-6 text-rbc-yellow" />
+          <h2 className="text-lg font-semibold text-white">PAR Co-Pilot</h2>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 rounded-full text-blue-200/70 hover:bg-white/10 hover:text-white transition-colors"
+        >
+          <X size={20} />
+        </button>
+      </header>
+
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Pane: The Co-pilot Chat */}
+        <div className="w-1/2 h-full flex flex-col border-r border-white/10">
           <MessageList messages={messages} />
-          {isTyping && (
-            <div className="px-6 pb-2 text-xs text-blue-200/70 animate-pulse">Co-pilot is processing...</div>
-          )}
-          <InputArea disabled={isTyping} onSubmit={handleNewMessage} placeholder="Provide details for the PAR..." />
+          <form onSubmit={handleParChatSubmit} className="p-4 border-t border-white/10">
+            <div className="relative">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="e.g., 'Add a risk section'"
+                className="w-full pl-4 pr-12 py-2 bg-black/30 rounded-lg border border-white/20 focus:ring-2 focus:ring-rbc-yellow/50 focus:outline-none"
+                disabled={isGenerating || isFetchingState}
+              />
+              <button
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-rbc-yellow disabled:opacity-50"
+                disabled={!input.trim() || isGenerating || isFetchingState}
+              >
+                {isGenerating ? <Sparkles className="w-5 h-5 animate-pulse" /> : <Send className="w-5 h-5" />}
+              </button>
+            </div>
+          </form>
         </div>
 
-        {/* PAR Preview Panel */}
+        {/* Right Pane: The PAR Document Preview */}
         <div
           className={cn(
-            "flex flex-col bg-black/20 border border-white/10 rounded-xl shadow-lg transition-all duration-700",
-            isUpdating && "shadow-glow-blue border-rbc-blue/50",
+            "w-1/2 h-full overflow-y-auto p-6 transition-all duration-700",
+            glow ? "shadow-glow-yellow" : "",
           )}
         >
-          <div className="p-4 border-b border-white/10 flex justify-between items-center flex-shrink-0">
-            <h3 className="font-medium text-blue-100/90 flex items-center gap-2">
-              <FileText size={16} className="text-rbc-yellow" />
-              Live PAR Preview
-            </h3>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 px-4 py-2 bg-rbc-blue text-white rounded-lg hover:bg-rbc-blue/80 transition-all duration-300 shadow-lg hover:shadow-glow-blue transform hover:-translate-y-0.5 text-sm font-semibold">
-                  <FileDown size={16} />
-                  Export
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-48 bg-slate-800/80 backdrop-blur-lg border-white/20 rounded-lg shadow-xl text-blue-50"
-              >
-                <DropdownMenuItem className="cursor-pointer focus:bg-rbc-blue/50">
-                  <FileText className="mr-2 h-4 w-4 text-rbc-yellow" />
-                  <span>Export as PDF</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer focus:bg-rbc-blue/50">
-                  <Presentation className="mr-2 h-4 w-4 text-rbc-yellow" />
-                  <span>Export as PPT</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <div ref={previewRef} className="flex-1 p-6 overflow-y-auto prose prose-sm prose-invert">
-            {isTyping && messages.length <= 1 ? (
-              <div className="flex flex-col items-center justify-center h-full text-blue-200/70">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rbc-yellow"></div>
-                <span className="mt-4 text-sm font-medium">Waiting for initial input...</span>
-              </div>
-            ) : (
-              <div dangerouslySetInnerHTML={{ __html: md.render(parContent) }} />
-            )}
-          </div>
+          {isFetchingState ? (
+            <div className="flex items-center justify-center h-full">
+              <BrainCircuit className="w-8 h-8 text-rbc-blue animate-pulse" />
+            </div>
+          ) : (
+            <div className="prose prose-invert" dangerouslySetInnerHTML={{ __html: renderMarkdown(parContent) }} />
+          )}
         </div>
       </div>
+
+      <footer className="p-4 border-t border-white/10 flex justify-end gap-3 flex-shrink-0">
+        <button className="px-4 py-2 text-sm font-semibold bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+          Save Draft
+        </button>
+        <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-rbc-yellow text-slate-900 rounded-lg hover:bg-rbc-yellow/80 transition-colors">
+          <Download size={16} />
+          Export
+        </button>
+      </footer>
     </div>
   )
 }
