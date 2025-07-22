@@ -1,7 +1,7 @@
 "use client"
 
-import { Link } from "react-router-dom"
-import { useLocation } from "react-router-dom"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { BrainCircuit, FilePlus, LayoutDashboard, Files } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -11,7 +11,7 @@ const navLinks = [
 ]
 
 export function Sidebar() {
-  const { pathname } = useLocation()
+  const pathname = usePathname()
 
   return (
     <aside className="w-72 h-screen bg-black/20 backdrop-blur-2xl border-r border-white/10 flex flex-col p-4 gap-6">
@@ -23,7 +23,7 @@ export function Sidebar() {
       </div>
 
       <Link
-        to="/dashboard/par/new/edit"
+        href="/dashboard/par/new/edit"
         className="group flex items-center justify-center gap-2 w-full px-4 py-3 bg-rbc-blue text-white rounded-lg hover:bg-rbc-blue/80 transition-all duration-300 shadow-lg hover:shadow-glow-blue transform hover:-translate-y-0.5 font-semibold"
       >
         <FilePlus size={18} />
@@ -36,7 +36,7 @@ export function Sidebar() {
           return (
             <Link
               key={link.href}
-              to={link.href}
+              href={link.href}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-blue-200/80 hover:text-white hover:bg-white/10 transition-all duration-200",
                 isActive && "bg-white/10 text-white shadow-inner",
