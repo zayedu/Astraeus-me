@@ -1,63 +1,106 @@
 "use client"
 
-import { useState } from "react"
-import { Header } from "./ui/header"
-import { MessageList } from "./ui/message-list"
-import { InputArea } from "./ui/input-area"
-import { WelcomeScreen } from "./ui/welcome-screen"
-import { APIService } from "@/services/api"
-import type { Message } from "@/lib/types"
+// components/astraeus-chat.tsx
 
-const apiService = new APIService()
+import type React from "react"
+import { useState, useEffect, useRef } from "react"
 
-interface AstraeusChatProps {
-  parGenerationActive: boolean
-  onParTrigger: () => void
+interface Message {
+  id: string
+  sender: string
+  text: string
+  timestamp: Date
 }
 
-export function AstraeusChat({ parGenerationActive, onParTrigger }: AstraeusChatProps) {
+interface AstraeusChatProps {
+  userId: string
+}
+
+const AstraeusChat: React.FC<AstraeusChatProps> = ({ userId }) => {
   const [messages, setMessages] = useState<Message[]>([])
-  const [isTyping, setIsTyping] = useState(false)
+  const [newMessage, setNewMessage] = useState("")
+  const chatContainerRef = useRef<HTMLDivElement>(null)
 
-  const handleNewMessage = async (query: string) => {
-    if (
-      parGenerationActive &&
-      (query.toLowerCase().includes("generate par") || query.toLowerCase().includes("project approval"))
-    ) {
-      const botMessage: Message = {
-        id: Date.now().toString(),
-        text: "A PAR generation session is already active. Please close the current session on the right to start a new one.",
-        sender: "bot",
-      }
-      setMessages((prev) => [...prev, botMessage])
-      return
-    }
+  useEffect(() => {
+    // Simulate fetching initial messages (replace with actual API call)
+    const initialMessages: Message[] = [
+      { id: "1", sender: "Astraeus", text: "Welcome to the chat!", timestamp: new Date() },
+      { id: "2", sender: userId, text: "Hello!", timestamp: new Date() },
+    ]
+    setMessages(initialMessages)
 
-    const userMessage: Message = { id: Date.now().toString(), text: query, sender: "user" }
-    setMessages((prev) => [...prev, userMessage])
-    setIsTyping(true)
+    // Scroll to bottom on initial load and when new messages are added
+    scrollToBottom()
+  }, [])
 
-    const response = await apiService.queryInsights(query)
-    setIsTyping(false)
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
 
-    if (response.content?.classification === "par_generation") {
-      onParTrigger()
-    } else {
-      const botMessage: Message = { id: (Date.now() + 1).toString(), text: response.content, sender: "bot" }
-      setMessages((prev) => [...prev, botMessage])
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
     }
   }
 
+  const handleSendMessage = () => {
+    if (newMessage.trim() !== "") {
+      const message: Message = {
+        id: String(Date.now()), // Generate a unique ID
+        sender: userId,
+        text: newMessage,
+        timestamp: new Date(),
+      }
+      setMessages([...messages, message])
+      setNewMessage("")
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value)
+  }
+
   return (
-    <div className="flex flex-col h-full bg-black/20 backdrop-blur-2xl rounded-2xl shadow-2xl shadow-black/30 border border-white/10">
-      <Header title="Insights Co-Pilot" />
-      {messages.length === 0 ? (
-        <WelcomeScreen onSuggestionClick={handleNewMessage} />
-      ) : (
-        <MessageList messages={messages} />
-      )}
-      {isTyping && <div className="px-6 pb-2 text-xs text-blue-200/70 animate-pulse">Astraeus is processing...</div>}
-      <InputArea disabled={isTyping} onSubmit={handleNewMessage} placeholder="Ask about financial data..." />
+    <div className="flex flex-col h-96 border border-gray-300 rounded-md shadow-sm">
+      <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-4">
+        {messages.map((message) => (
+          <div key={message.id} className={`mb-2 ${message.sender === userId ? "text-right" : "text-left"}`}>
+            <div
+              className={`inline-block rounded-lg py-2 px-3 ${
+                message.sender === userId ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-800"
+              }`}
+            >
+              <div className="text-xs font-semibold">{message.sender}</div>
+              <div>{message.text}</div>
+              <div className="text-xs text-gray-500">{message.timestamp.toLocaleTimeString()}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="p-4 border-t border-gray-300">
+        <div className="flex">
+          <input
+            type="text"
+            className="flex-grow border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            placeholder="Type your message..."
+            value={newMessage}
+            onChange={handleInputChange}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleSendMessage()
+              }
+            }}
+          />
+          <button
+            className="ml-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline"
+            onClick={handleSendMessage}
+          >
+            Send
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
+
+export default AstraeusChat

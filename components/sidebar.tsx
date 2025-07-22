@@ -1,7 +1,7 @@
 "use client"
 
-import { Link, useLocation } from "react-router-dom"
-// This is no longer needed
+import { Link } from "react-router-dom"
+import { useLocation } from "react-router-dom"
 import { BrainCircuit, FilePlus, LayoutDashboard, Files } from "lucide-react"
 import { cn } from "@/lib/utils"
 

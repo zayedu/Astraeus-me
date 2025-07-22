@@ -1,72 +1,49 @@
 "use client"
 
-import React, { useState } from "react"
-import { Layout, Menu, Button } from "antd"
-import {
-  MenuUnfoldOutlined,
-  MenuFoldOutlined,
-  UserOutlined,
-  VideoCameraOutlined,
-  UploadOutlined,
-} from "@ant-design/icons"
+import { AstraeusChat } from "@/components/astraeus-chat"
+import { PARGeneration } from "@/components/par-generation"
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
 import { useNavigate } from "react-router-dom"
 
-const { Header, Sider, Content } = Layout
-
 interface MainLayoutProps {
-  children: React.ReactNode
+  parId?: string
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
-  const [collapsed, setCollapsed] = useState(false)
+export function MainLayout({ parId }: MainLayoutProps) {
   const navigate = useNavigate()
-
-  const handleClosePar = () => {
-    navigate("/dashboard", { replace: true })
-  }
+  const isParMode = !!parId
 
   const handleParTrigger = () => {
-    navigate("/dashboard/par/new/edit", { replace: true })
+    // Navigate to a new PAR creation page
+    navigate("/dashboard/par/new/edit")
+  }
+
+  const handleParClose = () => {
+    // Navigate back to the main dashboard view
+    navigate("/dashboard")
   }
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
-      <Sider trigger={null} collapsible collapsed={collapsed}>
-        <div className="logo" style={{ height: "32px", margin: "16px", background: "rgba(255, 255, 255, 0.2)" }} />
-        <Menu theme="dark" mode="inline" defaultSelectedKeys={["1"]}>
-          <Menu.Item key="1" icon={<UserOutlined />}>
-            nav 1
-          </Menu.Item>
-          <Menu.Item key="2" icon={<VideoCameraOutlined />}>
-            nav 2
-          </Menu.Item>
-          <Menu.Item key="3" icon={<UploadOutlined />}>
-            nav 3
-          </Menu.Item>
-        </Menu>
-      </Sider>
-      <Layout className="site-layout">
-        <Header className="site-layout-background" style={{ padding: 0 }}>
-          {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
-            className: "trigger",
-            onClick: () => setCollapsed(!collapsed),
-          })}
-          <Button onClick={handleClosePar}>Close PAR</Button>
-          <Button onClick={handleParTrigger}>Trigger PAR</Button>
-        </Header>
-        <Content
-          className="site-layout-background"
-          style={{
-            margin: "24px 16px",
-            padding: 24,
-            minHeight: 280,
-          }}
-        >
-          {children}
-        </Content>
-      </Layout>
-    </Layout>
+    <div className="h-full p-4">
+      {!isParMode ? (
+        <div className="h-full">
+          <AstraeusChat parGenerationActive={false} onParTrigger={handleParTrigger} />
+        </div>
+      ) : (
+        <ResizablePanelGroup direction="horizontal" className="w-full h-full">
+          <ResizablePanel defaultSize={40} minSize={20}>
+            {/* The chat panel in PAR mode should not be able to trigger a new PAR */}
+            <AstraeusChat parGenerationActive={true} onParTrigger={() => {}} />
+          </ResizablePanel>
+          <ResizableHandle
+            withHandle
+            className="bg-transparent hover:bg-rbc-blue/20 transition-colors duration-200 data-[resize-handle-state=drag]:bg-rbc-blue/30"
+          />
+          <ResizablePanel defaultSize={60} minSize={30}>
+            <PARGeneration parId={parId} onClose={handleParClose} />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      )}
+    </div>
   )
 }
-
-export default MainLayout
