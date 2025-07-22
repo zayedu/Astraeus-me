@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link"
+import { Link } from "react-router-dom"
 import { Download, FileText, MoreHorizontal, Pencil, Search, LoaderCircle } from "lucide-react"
 import { APIService } from "@/services/api"
 import { cn } from "@/lib/utils"
@@ -99,7 +99,7 @@ export default function DocumentsPage() {
                     >
                       <DropdownMenuItem asChild>
                         <Link
-                          href={`/dashboard/par/${doc.id}/edit`}
+                          to={`/dashboard/par/${doc.id}/edit`}
                           className="flex items-center gap-2 cursor-pointer focus:bg-rbc-blue/50"
                         >
                           <Pencil className="mr-2 h-4 w-4" />

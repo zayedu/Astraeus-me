@@ -1,49 +1,72 @@
 "use client"
 
-import { useState } from "react"
-import { AstraeusChat } from "@/components/astraeus-chat"
-import { PARGeneration } from "@/components/par-generation"
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
+import React, { useState } from "react"
+import { Layout, Menu, Button } from "antd"
+import {
+  MenuUnfoldOutlined,
+  MenuFoldOutlined,
+  UserOutlined,
+  VideoCameraOutlined,
+  UploadOutlined,
+} from "@ant-design/icons"
+import { useNavigate } from "react-router-dom"
+
+const { Header, Sider, Content } = Layout
 
 interface MainLayoutProps {
-  parId?: string
+  children: React.ReactNode
 }
 
-export function MainLayout({ parId }: MainLayoutProps) {
-  const [mode, setMode] = useState<"default" | "par_generation">(parId ? "par_generation" : "default")
-  // This state is to prevent re-triggering PAR generation while one is active.
-  const [parGenerationActive, setParGenerationActive] = useState(!!parId)
+const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  const [collapsed, setCollapsed] = useState(false)
+  const navigate = useNavigate()
 
-  const handleParTrigger = () => {
-    setMode("par_generation")
-    setParGenerationActive(true)
+  const handleClosePar = () => {
+    navigate("/dashboard", { replace: true })
   }
 
-  const handleParClose = () => {
-    setMode("default")
-    setParGenerationActive(false) // Allow re-triggering
+  const handleParTrigger = () => {
+    navigate("/dashboard/par/new/edit", { replace: true })
   }
 
   return (
-    <div className="h-full p-4">
-      {mode === "default" ? (
-        <div className="h-full">
-          <AstraeusChat parGenerationActive={parGenerationActive} onParTrigger={handleParTrigger} />
-        </div>
-      ) : (
-        <ResizablePanelGroup direction="horizontal" className="w-full h-full">
-          <ResizablePanel defaultSize={40} minSize={20}>
-            <AstraeusChat parGenerationActive={parGenerationActive} onParTrigger={handleParTrigger} />
-          </ResizablePanel>
-          <ResizableHandle
-            withHandle
-            className="bg-transparent hover:bg-rbc-blue/20 transition-colors duration-200 data-[resize-handle-state=drag]:bg-rbc-blue/30"
-          />
-          <ResizablePanel defaultSize={60} minSize={30}>
-            <PARGeneration parId={parId} onClose={handleParClose} />
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      )}
-    </div>
+    <Layout style={{ minHeight: "100vh" }}>
+      <Sider trigger={null} collapsible collapsed={collapsed}>
+        <div className="logo" style={{ height: "32px", margin: "16px", background: "rgba(255, 255, 255, 0.2)" }} />
+        <Menu theme="dark" mode="inline" defaultSelectedKeys={["1"]}>
+          <Menu.Item key="1" icon={<UserOutlined />}>
+            nav 1
+          </Menu.Item>
+          <Menu.Item key="2" icon={<VideoCameraOutlined />}>
+            nav 2
+          </Menu.Item>
+          <Menu.Item key="3" icon={<UploadOutlined />}>
+            nav 3
+          </Menu.Item>
+        </Menu>
+      </Sider>
+      <Layout className="site-layout">
+        <Header className="site-layout-background" style={{ padding: 0 }}>
+          {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
+            className: "trigger",
+            onClick: () => setCollapsed(!collapsed),
+          })}
+          <Button onClick={handleClosePar}>Close PAR</Button>
+          <Button onClick={handleParTrigger}>Trigger PAR</Button>
+        </Header>
+        <Content
+          className="site-layout-background"
+          style={{
+            margin: "24px 16px",
+            padding: 24,
+            minHeight: 280,
+          }}
+        >
+          {children}
+        </Content>
+      </Layout>
+    </Layout>
   )
 }
+
+export default MainLayout
