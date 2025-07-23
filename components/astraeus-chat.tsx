@@ -7,17 +7,32 @@ import { InputArea } from "./ui/input-area"
 import { WelcomeScreen } from "./ui/welcome-screen"
 import { APIService } from "@/services/api"
 import type { Message } from "@/lib/types"
+import { BrainCircuit } from "lucide-react"
 
 const apiService = new APIService()
 
 interface AstraeusChatProps {
   parGenerationActive: boolean
   onParTrigger: () => void
+  isCollapsed?: boolean
 }
 
-export function AstraeusChat({ parGenerationActive, onParTrigger }: AstraeusChatProps) {
+export function AstraeusChat({ parGenerationActive, onParTrigger, isCollapsed }: AstraeusChatProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [isTyping, setIsTyping] = useState(false)
+
+  if (isCollapsed) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center bg-black/20 backdrop-blur-2xl rounded-2xl shadow-2xl shadow-black/30 border border-white/10">
+        <div className="relative group">
+          <div className="absolute -inset-2 bg-gradient-to-br from-rbc-blue to-rbc-yellow rounded-lg blur-md opacity-50 group-hover:opacity-70 transition-opacity"></div>
+          <div className="relative w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center border border-white/20">
+            <BrainCircuit className="h-6 w-6 text-rbc-blue" />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const handleNewMessage = async (query: string) => {
     if (
